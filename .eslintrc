@@ -1,0 +1,34 @@
+{
+	"extends": "airbnb",
+	"env": {
+		"browser": true,
+		"node": true
+	},
+	"plugins": [
+		"eslint-plugin-babel",
+	],
+	"rules": {
+		"react/jsx-uses-react": 2,
+		"react/jsx-uses-vars": 2,
+		"react/react-in-jsx-scope": 2,
+		"block-scoped-var": 1,
+		"padded-blocks": 0,
+		"no-console": 1,
+		"spaced-comment": 1,
+		"space-before-blocks": 1,
+		"indent": [2, "tab"],
+		"curly": 0,
+		"default-case": 1,
+		"no-nested-ternary": 1,
+		"no-shadow": 1,
+		"new-cap": 1,
+		"no-fallthrough": 1,
+		"no-undef": 2
+	},
+	"globals": {
+		"__DEVELOPMENT__": true,
+		"__CLIENT__": true,
+		"__SERVER__": true,
+		"__DISABLE_SSR__": true,
+	}
+}

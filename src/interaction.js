@@ -3,7 +3,7 @@ export const readline = require('readline').createInterface({
 	output: process.stdout,
 });
 
-export const question = text => new Promise(resolve => readline.question(chalk.magenta(text) + ' ', resolve));
+export const question = text => new Promise(resolve => readline.question(chalk.red(text) + ' ', resolve));
 
 import clk from 'chalk';
 export const chalk = clk;

@@ -1,28 +1,58 @@
-const input = require('readline').createInterface({
-	input: process.stdin,
-	output: process.stdout,
-});
+import Area from './src/Area';
+import DeadBody from './src/DeadBody';
 
-const question = text => new Promise(resolve => input.question(text + ' ', resolve));
+const shadystreet = new Area(
+	'a shady street',
+	'A dark shady street surrounds you.',
+	[], [
+		new DeadBody(),
+	]
+);
 
+let character = {
+	pose: 'standing',
+	inventory: [],
+};
 
-const shadystreet = {
-	name: 'a shady street',
-	description: 'You are in a street filled with prostitutes and murdering cockroaches.',
-	items: ['big black dildo', 'seringe', 'murdering cockroach'];
+import {println, chalk, question} from './src/interaction';
+
+async function proceed() {
+	const command = await question(chalk.blue(character.name) + ':');
+	process.stdout.write("\u001b[1A");
+	if (command[0] === '\/') {
+		const cmd = command.substr(1).split(' ');
+		switch (cmd[0]) {
+			case 'sit':
+				if (character.pose === 'standing') {
+					println(chalk.dim('You sat down.'));
+					character.pose = 'sitting';
+					break;
+				}
+				println(chalk.yellow('You are already sitting down.'));
+				break;
+			case 'stand':
+				if (character.pose === 'sitting') {
+					println(chalk.dim('You pull yourself up.'));
+					character.pose = 'standing';
+					break;
+				}
+				println(chalk.yellow('You are already standing up.'));
+				break;
+			case 'inventory':
+				println(chalk.cyan('inventory') + ':', character.inventory.join(', '));
+				break;
+			default:
+				const action = character.currentArea.getAction(cmd);
+				if (!action) println(chalk.red('Unknown command.'));
+				else action(character);
+		}
+	} else println(chalk.blue(character.name) + ': ' + command);
 }
 
-function goInto(place) {
-	const {name, description, items} = place;
-	console.log(`You step into ${name}.\n${description}`)
-}
-
-async function game() {
-	const name = await question('What\'s your name?');
-	console.log('nice to meet ya ' + name);
-	const idade = parseInt(await question('How old, ho?'));
-	if (idade > 18) console.log('get in, quick, and drop your smelly panties.');
-	else console.log('go drink milk, you have to grooooooooooow.');
+async function game(command) {
+	character.name = await question('Insert your character name:');
+	character.currentArea = shadystreet.enter();
+	while (true) await proceed();
 };
 
 game();

@@ -1,10 +1,15 @@
-import {println, chalk} from './interaction';
+import {system, chalk} from './interaction';
+
+export const printIO = name => chalk.black(name);
 export default class InteractiveObject {
 	constructor(name, description) {
 		this.name = name;
-		this.description = description;
+		this.description = description.replace(name, printIO(name));
 	}
-	view(){
-		println(chalk.dim(this.description));
+	print() {
+		printIO(this.name);
+	}
+	view() {
+		system(this.description);
 	}
 }

@@ -1,28 +1,24 @@
-import {println, chalk} from './interaction';
+import {system} from './interaction';
+import GameObj from './GameObj';
+import Inventory from './Inventory';
 
-export default class Area {
-	constructor(name = 'The Void', description = 'You are lost, nothing for you to do here, nowhere to go.', items = [], interactiveObjects = []) {
+export default class Area extends GameObj {
+	constructor(name = 'The Void', description = 'You are lost, nothing for you to do here, nowhere to go.', itemList = [], interactiveObjects = []) {
+		super(description);
 		this.name = name;
-		this.description = description;
-		this.items = items;
-		this.interactiveObjects = interactiveObjects;
+		this.ios = interactiveObjects;
+		this.inventory = new Inventory(itemList, this, 'There are various objects laying around:');
 	}
-	enter(character){
-		const {name, description, items, interactiveObjects} = this;
-		println(chalk.dim('walked to ' + name + '\n'), description);
-		interactiveObjects.forEach(io => io.view());
-		if (items && items.length) println('There are various objects laying around: ', items.join(', a '));
+	view() {
+		super.view();
+		this.ios.forEach(io => io.view());
+		system(this.inventory.print(true));
+	}
+	enter() {
+		this.view();
 		return this;
 	}
-	getAction(command) {
-		const io = this.interactiveObjects;
-		for (let i = 0; i < io.length; i++) {
-			const cio = io[i];
-			if (cio.name === command.slice(1).join(' ')) {
-				const action =  cio[command[0]];
-				if (action) return action.bind(cio);
-			}
-		}
-		return false;
+	dropInto(itemStack) {
+		this.inventory.addItemStack(itemStack);
 	}
 }

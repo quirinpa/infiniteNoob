@@ -1,7 +1,8 @@
 import Area from './src/Area';
 import DeadBody from './src/DeadBody';
 import DeadMouse from './src/DeadMouse';
-import Inventory from './src/Inventory';
+import Character from './src/Character';
+import Container from './src/Container';
 
 const shadystreet = new Area(
 	'a shady street',
@@ -11,59 +12,51 @@ const shadystreet = new Area(
 	]
 );
 
-let character = {
-	pose: 'standing',
-	inventory: new Inventory(),
-};
-
 import {println, chalk, question} from './src/interaction';
 
-async function proceed() {
-	const command = await question(chalk.red(character.name) + ':');
-	process.stdout.write("\u001b[1A\u001b[K");
+function noSuchThing() {
+	println(chalk.dim('You can\'t do such a thing...'));
+}
+
+const player = new Character(question('Enter your character name:'));
+println(chalk.dim('Welcome to infinity.'));
+const currentArea = shadystreet.enter();
+/* eslint-disable no-constant-condition */
+/* eslint-disable no-loop-func */
+while (true) {
+	const command = question(chalk.blue(player.name + ':'));
+	process.stdout.write('\u001b[1A\u001b[K');
 	if (command[0] === '\/') {
 		const cmd = command.substr(1).split(' ');
 		switch (cmd[0]) {
-			case 'sit':
-				if (character.pose === 'standing') {
-					println(chalk.dim('You sat down.'));
-					character.pose = 'sitting';
-					break;
+		case 'sit':
+			player.sit();
+			break;
+		case 'stand':
+			player.stand();
+			break;
+		case 'loot':
+			let foundContainer = false;
+			for (let i = 0; i < currentArea.ios.length && !foundContainer; i++) {
+				const io = currentArea.ios[i];
+				if (io instanceof Container && io.name === cmd.slice(1).join(' ')) {
+					player.loot(io);
+					foundContainer = true;
 				}
-				println(chalk.yellow('You are already sitting down.'));
-				break;
-			case 'stand':
-				if (character.pose === 'sitting') {
-					println(chalk.dim('You pull yourself up.'));
-					character.pose = 'standing';
-					break;
-				}
-				println(chalk.yellow('You are already standing up.'));
-				break;
-			case 'loot':
-				const aio = character.currentArea.interactiveObjects;
-				for (let i = 0; i < aio.length; i++) {
-					const cio = aio[i];
-					if (cio.name === cmd.slice(1).join(' ') && cio.inventory) {
-						return cio.inventory.loot(character);
-					}
-				}
-				break;
-			case 'inventory':
-				println(chalk.white('inventory') + ':', character.inventory.map(item => chalk.blue(item)).join(', '));
-				break;
-			default:
-				const action = character.currentArea.getAction(cmd);
-				if (!action) println(chalk.red('Unknown command.'));
-				else action(character);
+			}
+			if (!foundContainer) noSuchThing();
+			break;
+		case 'drop':
+
+			break;
+		case 'inventory':
+			player.inventory.print();
+			break;
+		default:
+			noSuchThing();
+			// const action = currentArea.getAction(cmd);
+			// if (!action) println(chalk.red('Unknown command.'));
+			// else action(character);
 		}
-	} else println(chalk.red(character.name) + ': ' + command);
+	} else println(chalk.blue(player.name + ': ') + command);
 }
-
-async function game(command) {
-	character.name = await question('Insert your character name:');
-	character.currentArea = shadystreet.enter();
-	while (true) await proceed();
-};
-
-game();

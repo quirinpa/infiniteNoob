@@ -1,12 +1,19 @@
-import {println} from './interaction';
+import {system, chalk, camelCase} from './interaction';
+
+export const printItem = name => chalk.cyan(name);
 
 export default class Item {
-	constructor(name, description, quantity) {
+	constructor(name, description) {
 		this.name = name;
+		this.camelCasedName = camelCase(name);
 		this.description = description;
-		this.quantity = quantity || 1;
+		this.isItem = true;
+	}
+	print() {
+		return printItem(this.name);
 	}
 	view() {
-		println(this.description);
+		system(this.description);
+		return true;
 	}
 }

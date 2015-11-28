@@ -1,22 +1,18 @@
 import math from 'mathjs';
 
-const noise = 0.3;
+const noiseRatio = 0.3;
 const mapSize = 9; // must be odd
 
 let map = (new Array(mapSize * mapSize)).fill(0);
 
-const xy = (x, y) => y * mapSize + x;
-const setPos = (x, y, val, iter = 0) => {
-	if (iter) {
-		const noiseReduction = noise / iter;
-		const noiseVal = - (noiseReduction / 2) + noiseReduction * Math.random();
-		map[xy(x, y)] = val + noiseVal;
-		// console.log('set pos', x, y, val + noiseVal);
-	} else {
-		// console.log('set pos', x, y, val);
-		map[xy(x, y)] = val;
-	}
-};
+function setPos(x, y, val) {
+	map[y * mapSize + x] = val;
+}
+
+function noise(iter) {
+	const noiseFactor = noiseRatio / iter;
+	return -(noiseFactor / 2) + noiseFactor * Math.random();
+}
 
 function gVal(val) {
 	return Math.floor(val * 10);
@@ -73,7 +69,7 @@ class Square {
 
 		const midPoint = values.reduce((res, val) => res + val, 0) / 4;
 		// console.log('mp', midPoint, 'x', mpX, 'y', mpY);
-		setPos(mpX, mpY, midPoint, iter);
+		setPos(mpX, mpY, midPoint + noise(iter));
 
 		const averages = [
 			(values[0] + values[1] + midPoint) / 3,
@@ -81,10 +77,14 @@ class Square {
 			(values[1] + values[3] + midPoint) / 3,
 			(values[2] + values[3] + midPoint) / 3,
 		];
-		setPos(mpX, this.y, averages[0], iter);
-		setPos(this.x, mpY, averages[1], iter);
-		setPos(this.x + this.size - 1, mpY, averages[2], iter);
-		setPos(mpX, this.y + this.size - 1, averages[3], iter);
+		// setPos(mpX, this.y, averages[0] + noise(iter));
+		// setPos(this.x, mpY, averages[1] + noise(iter));
+		// setPos(this.x + this.size - 1, mpY, averages[2] + noise(iter));
+		// setPos(mpX, this.y + this.size - 1, averages[3] + noise(iter));
+		setPos(mpX, this.y, averages[0]);
+		setPos(this.x, mpY, averages[1]);
+		setPos(this.x + this.size - 1, mpY, averages[2]);
+		setPos(mpX, this.y + this.size - 1, averages[3]);
 	}
 }
 function tesselate(rect, iter) {
@@ -102,6 +102,7 @@ function tesselate(rect, iter) {
 				nextSideLen
 			), iter - 1);
 }
+
 randomCorners(0, 0, mapSize);
 // setAverages(0, 0, mapSize, centerP, averages);
 const nIterations = Math.floor(Math.sqrt(mapSize));

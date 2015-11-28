@@ -1,13 +1,14 @@
 import {system} from './interaction';
 import ItemStack from './ItemStack';
+import GameObj from './GameObj';
 // import Item from './Item';
 // import {Map} from 'immutable';
 
-export default class Inventory {
+export default class Inventory extends GameObj {
 	constructor(itemDescriptors = [], owner, descriptor) {
-		this.owner = owner;
-		this.descriptor = descriptor || this.owner.print() + '\'s inventory: ';
+		super(descriptor || owner.name + '\'s inventory', '');
 		this.itemStacks = new Map();
+		this.owner = owner;
 
 		if (Array.isArray(itemDescriptors)) {
 			itemDescriptors.forEach(itemDescriptor => Array.isArray(itemDescriptor) ?
@@ -44,8 +45,8 @@ export default class Inventory {
 			.join(', ');
 	}
 	view() {
-		if (!this.itemStacks.size) return system(this.descriptor + ' has no items.');
-		system(this.descriptor + ' ' + this.print());
+		if (!this.itemStacks.size) return system(super.print() + ': no items.');
+		system(super.print() + ': ' + this.print());
 		return true;
 	}
 }

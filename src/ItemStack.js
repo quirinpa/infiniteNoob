@@ -1,15 +1,15 @@
 import {chalk} from './interaction';
-import {printItem} from './Item';
+import Mapeable from './Mapeable';
 
-export default class ItemStack {
+export default class ItemStack extends Mapeable {
 	constructor(item, quantity = 1) {
-		this.camelCasedName = item.camelCasedName;
+		super(item.name, item.description, item.color);
 		this.item = item;
 		this.quantity = quantity;
 	}
 	print() {
 		return (this.quantity > 1 ? chalk.yellow(this.quantity) + ' ' : '') +
-			printItem(this.item.camelCasedName) +
+			this.item.print() +
 			(this.quantity > 1 ? 's' : '');
 	}
 	view() {

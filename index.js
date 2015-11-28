@@ -5,7 +5,7 @@ import Character from './src/Character';
 import Container from './src/Container';
 
 const shadystreet = new Area(
-	'a shady street',
+	'dark shady street',
 	'A dark shady street surrounds you.',
 	[], [
 		new DeadBody([new DeadMouse()]),
@@ -50,7 +50,7 @@ while (true) {
 
 			break;
 		case 'inventory':
-			player.inventory.print();
+			player.inventory.view();
 			break;
 		default:
 			noSuchThing();

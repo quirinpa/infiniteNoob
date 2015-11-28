@@ -1,15 +1,6 @@
-import {system, chalk} from './interaction';
-
-export const printIO = name => chalk.black(name);
-export default class InteractiveObject {
+import Mapeable from './Mapeable';
+export default class InteractiveObject extends Mapeable {
 	constructor(name, description) {
-		this.name = name;
-		this.description = description.replace(name, printIO(name));
-	}
-	print() {
-		printIO(this.name);
-	}
-	view() {
-		system(this.description);
+		super(name, description, 'black');
 	}
 }

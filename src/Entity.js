@@ -1,14 +1,11 @@
 // import Stats from './Stats';
+import Mapeable from './Mapeable';
 import Inventory from './Inventory';
-import {chalk} from './interaction';
-export default class Entity {
+export default class Entity extends Mapeable {
 	constructor(name, area, lvl = 1) {
+		super(name, 'Entity ' + name, 'blue');
 		this.area = area;
-		this.name = name;
 		this.lvl = lvl;
 		this.inventory = new Inventory([], this);
-	}
-	print() {
-		return chalk.blue(this.name);
 	}
 }

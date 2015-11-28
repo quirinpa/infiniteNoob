@@ -1,19 +1,8 @@
-import {system, chalk, camelCase} from './interaction';
+import GameObj from './GameObj';
 
-export const printItem = name => chalk.cyan(name);
-
-export default class Item {
+export default class Item extends GameObj {
 	constructor(name, description) {
-		this.name = name;
-		this.camelCasedName = camelCase(name);
-		this.description = description;
+		super(name, description, 'cyan');
 		this.isItem = true;
-	}
-	print() {
-		return printItem(this.name);
-	}
-	view() {
-		system(this.description);
-		return true;
 	}
 }

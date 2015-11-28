@@ -1,4 +1,4 @@
-import {chalk, system, warning} from './interaction';
+import {system, warning} from './interaction';
 import Entity from './Entity';
 import {printItemStack} from './ItemStack';
 
@@ -6,9 +6,6 @@ export default class Character extends Entity {
 	constructor(name, area, lvl) {
 		super(name, area, lvl);
 		this.pose = 'standing';
-	}
-	print() {
-		return chalk.blue(this.name);
 	}
 	sit() {
 		if (this.pose === 'standing') {

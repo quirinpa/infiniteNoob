@@ -1,7 +1,7 @@
 import math from 'mathjs';
 
-const noiseRatio = 10; // other values show what might be a bug
-const mapSize = 32; // must be power of 2
+const noiseRatio = 5; // other values show what might be a bug
+const mapSize = 64; // must be power of 2
 
 const pointMapSize = mapSize + 1;
 
@@ -33,15 +33,16 @@ import Jimp from 'jimp';
 
 function saveHeightMatrix(matrix, path) {
 	// console.log('saving');
-	(new Jimp(mapSize, mapSize, function(err, image) {
+	(new Jimp(pointMapSize, pointMapSize, function(err, image) {
 		this.scan(0, 0, image.bitmap.width, image.bitmap.height, function (x, y, idx) {
-			const greyVal = Math.round(((
-				matrix.subset(math.index(x, y)) +
-				matrix.subset(math.index(x + 1, y)) +
-				matrix.subset(math.index(x, y + 1)) +
-				matrix.subset(math.index(x + 1, y + 1))
-			) / 4) * 255);
-			process.stdout.write(`(${x},${y},${greyVal})`);
+			// const greyVal = Math.round(((
+			// 	matrix.subset(math.index(x, y)) +
+			// 	matrix.subset(math.index(x + 1, y)) +
+			// 	matrix.subset(math.index(x, y + 1)) +
+			// 	matrix.subset(math.index(x + 1, y + 1))
+			// ) / 4) * 255);
+			const greyVal = 	matrix.subset(math.index(x, y)) * 255;
+			// process.stdout.write(`(${x},${y},${greyVal})`);
 			for (let i = 0; i < 3; i++)
 				image.bitmap.data[idx + i] = greyVal;
 			image.bitmap.data[idx + 3] = 255;
@@ -68,13 +69,13 @@ function printSquared(matrix) {
 	}
 }
 
-// function print(matrix) {
-// 	for (let y = 0; y < pointMapSize; y++) {
-// 		for (let x = 0; x < pointMapSize; x++)
-// 			process.stdout.write(`${format(matrix.subset(math.index(x, y)))}`);
-// 		process.stdout.write('\n');
-// 	}
-// }
+function print(matrix) {
+	for (let y = 0; y < pointMapSize; y++) {
+		for (let x = 0; x < pointMapSize; x++)
+			process.stdout.write(`${format(matrix.subset(math.index(x, y)))}`);
+		process.stdout.write('\n');
+	}
+}
 
 // let gSteps = 0;
 class Square {
@@ -87,7 +88,7 @@ class Square {
 		this.rSize = sSize + 1;
 	}
 
-	setAverages(iter) {
+	setAverages(iter, notFirstColumn, notFirstLine) {
 		const values = [
 			[this.x, this.y],
 			[this.x2, this.y],
@@ -99,32 +100,35 @@ class Square {
 		const mpY = this.y + this.sSize / 2;
 		// console.log('mpmp', mpX, mpY);
 
-		const midPoint = values.reduce((res, val) => res + val, 0) / 4 + noise(iter);
+		const midPointAdd = [];
+		if (!notFirstColumn) midPointAdd.push([this.x, mpY]);
+		if (!notFirstLine) midPointAdd.push([mpX, this.y]);
+		const midPoint = (
+			values.reduce((res, val) => res + val, 0) +
+			midPointAdd.reduce((res, val) => res + mapMat.subset(math.index(val[0], val[1])), 0)
+		) / (4 + midPointAdd.length) + noise(iter);
 		mapMat.subset(math.index(mpX, mpY), midPoint);
 		// console.log('avr', midPoint, mpX, mpY);
 
-		const averages = [
-			(values[0] + values[1] + midPoint) / 3,
-			(values[0] + values[2] + midPoint) / 3,
-			(values[1] + values[3] + midPoint) / 3,
-			(values[2] + values[3] + midPoint) / 3,
-		];
-
-		// console.log('averages', midPoint, averages);
-
-		mapMat.subset(math.index(mpX, this.y), averages[0]);
-		mapMat.subset(math.index(this.x, mpY), averages[1]);
-		mapMat.subset(math.index(this.x2, mpY), averages[2]);
-		mapMat.subset(math.index(mpX, this.y2), averages[3]);
-		// print(mapMat);
+		if (!notFirstLine)
+			mapMat.subset(math.index(mpX, this.y),
+				(values[0] + values[1] + midPoint) / 3);
+		if (!notFirstColumn)
+			mapMat.subset(math.index(this.x, mpY),
+				(values[0] + values[2] + midPoint) / 3);
+		mapMat.subset(math.index(this.x2, mpY),
+			(values[1] + values[3] + midPoint) / 3);
+		mapMat.subset(math.index(mpX, this.y2),
+			(values[2] + values[3] + midPoint) / 3);
+		// print(normalize(mapMat));
 		// console.log('.....');
 	}
 }
 
-function tesselate(rect, iter = 1) {
+function tesselate(rect, iter = 1, notFirstColumn, notFirstLine) {
 	// console.log('tesselate', rect, 'lvl', iter);
 
-	rect.setAverages(iter);
+	rect.setAverages(iter, notFirstColumn, notFirstLine);
 
 	if (rect.sSize === 2) return; // finished
 
@@ -138,7 +142,7 @@ function tesselate(rect, iter = 1) {
 				rect.x + rx * newSSize,
 				rect.y + ry * newSSize,
 				newSSize
-			), iter + 1);
+			), iter + 1, rx || notFirstColumn, ry || notFirstLine);
 
 	// if (iter === 1) print(mapMat);
 }
@@ -160,4 +164,4 @@ function normalize(matrix) {
 
 
 printSquared(normalize(mapMat));
-saveHeightMatrix(normalize(mapMat), 'nnoise' + noiseRatio + '.jpg');
+saveHeightMatrix(normalize(mapMat), mapSize + 'x' + mapSize + ' ' + noiseRatio + '.jpg');

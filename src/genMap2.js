@@ -1,4 +1,4 @@
-const waterLevel = 0.9;
+const waterLevel = 0.5;
 
 // http://www.bluh.org/code-the-diamond-square-algorithm/
 import math from 'mathjs';
@@ -36,46 +36,6 @@ function wSetSample(m, x, y, val) {
 	m.subset(mi(...wrapCoords(x, y, size)), val);
 }
 
-function diamondSquare(size, _stepSize, _scale, _scaleMod) {
-	const m = math.zeros(size, size);
-	let stepSize = _stepSize;
-	let scaleMod = _scaleMod;
-	let scale = _scale;
-	do {
-		const halfStep = stepSize / 2;
-		for (let y = 0; y < size; y += stepSize) {
-			for (let x = 0; x < size; x += stepSize) {
-				const a = wSample(m, x, y);
-				const b = wSample(m, x + stepSize, y);
-				const c = wSample(m, x, y + stepSize);
-				const d = wSample(m, x + stepSize, y + stepSize);
-
-				const e = (a + b + c + d) / 4.0 + frand() * stepSize * scale;
-				wSetSample(m, x + halfStep, y + halfStep, e);
-			}
-		}
-		for (let y = 0; y < size; y += stepSize) {
-			for (let x = 0; x < size; x += stepSize) {
-				const a = wSample(m, x, y);
-				const b = wSample(m, x + stepSize, y);
-				const c = wSample(m, x, y + stepSize);
-				const d = wSample(m, x + halfStep, y + halfStep);
-				const e = wSample(m, x + halfStep, y - halfStep);
-				const f = wSample(m, x - halfStep, y + halfStep);
-
-				const H = (a + b + d + e) / 4.0 + frand() * stepSize * scale * 0.5;
-				const g = (a + c + d + f) / 4.0 + frand() * stepSize * scale * 0.5;
-				wSetSample(m, x + halfStep, y, H);
-				wSetSample(m, x, y + halfStep, g);
-			}
-		}
-		stepSize /= 2;
-		scale *= (scaleMod + 0.8);
-		scaleMod *= 0.3;
-	} while (stepSize > 1);
-	return m;
-}
-
 function normalize(m) {
 	const firstVal = wSample(m, 0, 0);
 	let min = firstVal;
@@ -84,25 +44,73 @@ function normalize(m) {
 		if (value < min) min = value;
 		if (value > max) max = value;
 	});
-	// console.log('normalization', min, max);
 	return math.divide(math.add(m, -min), max - min);
 }
 
+import Jimp from 'jimp';
+function save(m, path, showWater = false) {
+	const size = m.size();
+	(new Jimp(size[0], size[1], function(err, image) {
+		const renderPix = showWater ? (g, idx) => {
+			if (g < waterLevel) {
+				for (let i = 0; i < 2; i++)
+					image.bitmap.data[idx + i] = g * 255;
+				image.bitmap.data[idx + 2] = (1 - (waterLevel - g)) * 255;
+				return;
+			}
+
+			for (let i = 0; i < 3; i++)
+				image.bitmap.data[idx + i] = g * 255;
+		} : (g, idx) => {
+			for (let i = 0; i < 3; i++)
+				image.bitmap.data[idx + i] = g * 255;
+		};
+
+		this.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x, y, idx) {
+			renderPix(m.subset(mi(x, y)), idx);
+			// alpha is always 1
+			image.bitmap.data[idx + 3] = 255;
+		});
+		image.write(__dirname + '/' + path);
+	}));
+	console.log('\nwrote', path);
+}
+
+// import {question} from './interaction';
 function mDiamondSquare(size, _steps, _scale = 1, _scaleMod = 1) {
 	const m = math.zeros(size, size);
+	// wSetSample(m, 0, 0, Math.random()); // first spot
 
-	const stepsThatDontFit = _steps.slice(0);
-	const stepsThatFit = [];
+	// const stepsThatDontFit = _steps.slice(0);
+	// const [firstStepSize, firstStep] = stepsThatDontFit.shift();
+	// const steps = [firstStep];
+	const firstStepSize = _steps[0][0];
+	const steps = _steps.map(v => ({
+		scale: 1 - (v[0] / firstStepSize),
+		f: v[1],
+	}));
 
-	let stepSize = _steps[0][0];
+	// randomize initial values
+	const firstHalfStep = firstStepSize / 2;
+	for (let y = 0; y < size; y += firstStepSize) {
+		for (let x = 0; x < size; x += firstStepSize) {
+			wSetSample(m, x, y, frand());
+			wSetSample(m, x + firstStepSize, y, frand());
+			wSetSample(m, x, y + firstStepSize, frand());
+			wSetSample(m, x + firstStepSize, y + firstStepSize, frand());
+			wSetSample(m, x + firstHalfStep, y + firstHalfStep, frand());
+			wSetSample(m, x + firstHalfStep, y - firstHalfStep, frand());
+			wSetSample(m, x - firstHalfStep, y + firstHalfStep, frand());
+		}
+	}
+
+	let stepSize = firstStepSize;
 	let scaleMod = _scaleMod;
-	let scale = _scale;
+	// let scale = _scale;
 
 	do {
-		if (stepsThatDontFit.length && stepsThatDontFit[0][0] === stepSize)
-			stepsThatFit.push(stepsThatDontFit.shift()[1]);
-
 		const halfStep = stepSize / 2;
+		// const stepScale = stepSize * scale;
 
 		for (let y = 0; y < size; y += stepSize) {
 			for (let x = 0; x < size; x += stepSize) {
@@ -110,15 +118,22 @@ function mDiamondSquare(size, _steps, _scale = 1, _scaleMod = 1) {
 				const b = wSample(m, x + stepSize, y);
 				const c = wSample(m, x, y + stepSize);
 				const d = wSample(m, x + stepSize, y + stepSize);
+
 				const avg = (a + b + c + d) / 4.0;
+				let e = avg
+				// console.log('b', e);
+				for (let i = 0; i < steps.length; i++)
+					e = steps[i].f(e, steps[i].scale, avg, x, y); // e = steps[i](e, stepScale, x, y);
+				// console.log(e);
 
-				let e = 0;
-				for (let i = 0; i < stepsThatFit.length; i++)
-					e = e + frand() * stepsThatFit[i] * stepSize * scale;
-
-				wSetSample(m, x + halfStep, y + halfStep, avg + e);
+				wSetSample(m, x + halfStep, y + halfStep, e);
 			}
 		}
+
+		// debug only!!!
+		// saveGrey(normalize(m), 'hstep' + stepSize + '.jpg');
+
+		// const halfStepScale = stepScale * 0.5;
 
 		for (let y = 0; y < size; y += stepSize) {
 			for (let x = 0; x < size; x += stepSize) {
@@ -128,23 +143,39 @@ function mDiamondSquare(size, _steps, _scale = 1, _scaleMod = 1) {
 				const d = wSample(m, x + halfStep, y + halfStep);
 				const e = wSample(m, x + halfStep, y - halfStep);
 				const f = wSample(m, x - halfStep, y + halfStep);
+
 				const avgH = (a + b + d + e) / 4.0;
 				const avgG = (a + c + d + f) / 4.0;
+				let H = avgH;
+				let G = avgG;
 
-				let H = 0;
-				let G = 0;
-				for (let i = 0; i < stepsThatFit.length; i++) {
-					H = H + frand() * stepsThatFit[i] * stepSize * scale * 0.5;
-					G = G + frand() * stepsThatFit[i] * stepSize * scale * 0.5;
+				for (let i = 0; i < steps.length; i++) {
+					// H = steps[i](H, halfStepScale, x, y);
+					// G = steps[i](G, halfStepScale, x, y);
+					H = steps[i].f(H, steps[i].scale * 0.5, avgH, x, y);
+					G = steps[i].f(G, steps[i].scale * 0.5, avgG, x, y);
 				}
 
-				wSetSample(m, x + halfStep, y, avgH + H);
-				wSetSample(m, x, y + halfStep, avgG + G);
+				// console.log(H, G);
+
+				wSetSample(m, x + halfStep, y, H);
+				wSetSample(m, x, y + halfStep, G);
 			}
 		}
+		// debug only!!
+		// saveGrey(normalize(m), 'step' + stepSize + '.jpg');
+		// question(stepSize);
+
 		stepSize /= 2;
-		scale *= (scaleMod + 0.8);
+		// scale *= (scaleMod + 0.8);
 		scaleMod *= 0.3;
+		for (let i = 0; i < steps.length; i++)
+			steps[i].scale *= scaleMod + 0.8;
+
+		// if (stepsThatDontFit.length && stepsThatDontFit[0][0] === stepSize)
+		// 	steps.push(stepsThatDontFit.shift()[1]);
+
+		// return normalize(m);
 	} while (stepSize > 1);
 	return normalize(m);
 }
@@ -169,10 +200,16 @@ function selectCoords(m, comp) {
 	return result;
 }
 
-function temperatureMap(heightMap, waterlevel, hVariance = 0.8, nStrength = 0.3, step = y => y) {
+function temperatureMap(heightMap, waterlevel, hVariance = 0.8, nStrength = 0.6, step = y => y) {
 	const truncHM = normalize(trunc(heightMap, waterlevel));
 	const size = heightMap.size()[0];
-	const noise = normalize(diamondSquare(size, 16, 1, 0.1));
+	const noise = mDiamondSquare(size, [
+		[32, (p, c) => p + c * frand()],
+		[16, (p, c) => p + c * frand() * 2],
+		// [8, (p, c) => p + c * frand() * 0.4],
+	]);
+	// debug only!!
+	save(noise, 'temp_noise.jpg');
 
 	const m = math.zeros(size, size);
 	const hs = size / 2;
@@ -185,83 +222,32 @@ function temperatureMap(heightMap, waterlevel, hVariance = 0.8, nStrength = 0.3,
 			const y1 = hs - y;
 			m.subset(mi(x, y1),
 				t *
-				(1 - hVariance * truncHM.subset(mi(x, y1))) *
-				(1 - nStrength * noise.subset(mi(x, y1)))
+				1 - (
+					hVariance * truncHM.subset(mi(x, y1)) +
+					nStrength * noise.subset(mi(x, y1))
+				)
 			);
 			const y2 = hs + y;
 			m.subset(mi(x, y2),
 				t *
-				(1 - hVariance * truncHM.subset(mi(x, y2))) *
-				(1 - nStrength * noise.subset(mi(x, y2)))
+				1 - (
+					hVariance * truncHM.subset(mi(x, y2)) +
+					nStrength * noise.subset(mi(x, y2))
+				)
 			);
 		}
 	}
 	return m;
 }
-// class GMatrix {
-// 	constructor(size) {
-// 		this.size = size;
-// 		this.matrix = math.zeros(size, size);
-// 		this.temperatures = math.zeros(size, size);
-// 	}
-// }
 
-import Jimp from 'jimp';
-
-function saveGrey(m, path) {
-	const size = m.size();
-	const waterLevel255 = waterLevel * 255;
-	(new Jimp(size[0], size[1], function(err, image) {
-		this.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x, y, idx) {
-			const greyVal = m.subset(mi(x, y)) * 255;
-
-			// process.stdout.write(`(${x},${y},${greyVal})`);
-			for (let i = 0; i < 3; i++)
-				image.bitmap.data[idx + i] = greyVal;
-			// for (let i = 0; i < 2; i++)
-			// 	image.bitmap.data[idx + i] = greyVal;
-			// if (greyVal < waterLevel255 )
-			// 	image.bitmap.data[idx + 2] = 255;
-			// else
-			// 	image.bitmap.data[idx + 2] = greyVal;
-			image.bitmap.data[idx + 3] = 255;
-		});
-		image.write(__dirname + '/' + path);
-	}));
-	console.log('\nwrote', path);
-}
-
-const stop1 = profile();
-const height = math.add(
-	normalize(diamondSquare(128, 32, 1, 0.1)),
-	math.multiply(normalize(diamondSquare(128, 8, 1, 0.1)), 0.7)
-);
-stop1();
-
-saveGrey(normalize(height), 'height.jpg');
-saveGrey(normalize(temperatureMap(height, waterLevel)), 'temperature.jpg');
-
-const stop2 = profile();
-const height2 = mDiamondSquare(128, [[64, 0.5], [32, 1], [8, 2]]);
-stop2();
-
-saveGrey(height2, 'height2.jpg');
-
-// function selectRandom(arr, n) {
-// 	if (arr.length < n)
-// 		throw new Error('can\'t select ' + n +
-// 			' random members of a size ' + arr.length + ' array');
-// 	const aux = arr.slice(0);
-// 	let result = [];
-// 	for (let i = 0; i < n && aux.length; i++) {
-// 		const r = Math.round(Math.random() * (aux.length - 1));
-// 		result = result.concat(aux.splice(r - 1, 1));
-// 	}
-// 	return result;
-// }
-//
-// const nRivers = 20;
-// const landCoords = selectCoords(adder, value => value > waterLevel);
-// // console.log(landCoords);
-// const riverSources = selectRandom(landCoords, nRivers);
-// console.log(riverSources, waterLevel);
+console.log('init');
+// const stop = profile();
+const height = mDiamondSquare(128, [
+	[32, (p, c) => p + c * frand()],
+	[16, (p, c) => p + c * frand() * 0.3],
+	[8, (p, c) => p + c * frand() * 0.1],
+	// [16, (p, c) => p + c * frand() * 0.05],
+]);
+// stop2();
+save(height, 'height.jpg', 1);
+save(normalize(temperatureMap(height, waterLevel)), 'temperature.jpg');

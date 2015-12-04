@@ -1,4 +1,4 @@
-import {system, warning} from './interaction';
+import {system, warning} from 'io';
 import Entity from './Entity';
 import {printItemStack} from './ItemStack';
 

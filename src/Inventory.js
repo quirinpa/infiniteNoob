@@ -1,10 +1,10 @@
-import {system} from './interaction';
-import ItemStack from './ItemStack';
-import GameObj from './GameObj';
+const io = require('./interaction');
+const ItemStack = require('./ItemStack');
+const GameObj = require('./GameObj');
 // import Item from './Item';
 // import {Map} from 'immutable';
 
-export default class Inventory extends GameObj {
+module.exports = class Inventory extends GameObj {
 	constructor(itemDescriptors = [], owner, descriptor) {
 		super(descriptor || owner.name + '\'s inventory', '');
 		this.itemStacks = new Map();
@@ -46,7 +46,7 @@ export default class Inventory extends GameObj {
 	}
 	view() {
 		if (!this.itemStacks.size) return system(super.print() + ': no items.');
-		system(super.print() + ': ' + this.print());
+		io.log(super.print() + ': ' + this.print());
 		return true;
 	}
 }

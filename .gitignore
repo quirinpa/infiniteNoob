@@ -2,3 +2,5 @@ node_modules
 src/*.png
 src/*.jpg
 src/steps
+static/*
+!static/index.html

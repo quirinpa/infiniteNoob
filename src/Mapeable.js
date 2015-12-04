@@ -1,4 +1,4 @@
-import GameObj from './GameObj';
+const GameObj = require('./GameObj');
 
 function camelCase(str) {
 	return str.toLowerCase()
@@ -13,7 +13,7 @@ function camelCase(str) {
 			.replace( / /g, '' );
 }
 
-export default class Mapeable extends GameObj {
+module.exports = class Mapeable extends GameObj {
 	constructor(name, description, color) {
 		super(name, description, color);
 		this.camelCasedName = camelCase(name);

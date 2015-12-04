@@ -1,7 +1,8 @@
 // import Stats from './Stats';
-import Mapeable from './Mapeable';
-import Inventory from './Inventory';
-export default class Entity extends Mapeable {
+const Mapeable = require('./Mapeable');
+const Inventory = require('./Inventory');
+
+module.exports = class Entity extends Mapeable {
 	constructor(name, area, lvl = 1) {
 		super(name, 'Entity ' + name, 'blue');
 		this.area = area;

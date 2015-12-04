@@ -1,17 +1,17 @@
-import {system} from './interaction';
-import GameObj from './GameObj';
-import Inventory from './Inventory';
+const io = require('./io');
+const GameObj = require('./GameObj');
+const Inventory = require('./Inventory');
 
-export default class Area extends GameObj {
-	constructor(name = 'The Void', description = 'You are lost in The Void, nothing for you to do here, nowhere to go.', itemList = [], interactiveObjects = []) {
+module.exports = class Area extends GameObj {
+	constructor(name = 'The Void', description = 'You are lost in The Void, nothing for you to do here, nowhere to go.', itemList = [], statics = []) {
 		super(name, description);
-		this.ios = interactiveObjects;
+		this.statics = statics;
 		this.inventory = new Inventory(itemList, this, 'There are various objects laying around:');
 	}
 	view() {
 		super.view();
-		this.ios.forEach(io => io.view());
-		system(this.inventory.print(true));
+		this.statics.forEach(obj => obj.view());
+		io.log(this.inventory.print(true));
 	}
 	enter() {
 		this.view();

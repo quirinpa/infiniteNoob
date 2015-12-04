@@ -1,16 +1,16 @@
-import {system, chalk} from './interaction';
+const io = require('./io');
 
-export default class GameObj {
+module.exports = class GameObj {
 	constructor(name, description, color = 'white') {
 		this.name = name;
 		this.description = description;
 		this.color = color;
-		this.coloredName = chalk[this.color](name);
+		this.coloredName = io.color(this.color, this.name);
 	}
 	view() {
-		system(this.description.replace(this.name, this.coloredName));
+		io.log(this.description.replace(this.name, this.coloredName));
 	}
 	print() {
-		return chalk[this.color](this.name);
+		return this.coloredName;
 	}
 }

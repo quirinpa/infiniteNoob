@@ -1,7 +1,7 @@
-import InteractiveObject from './InteractiveObject';
-import Inventory from './Inventory';
+const Static = require('./Static');
+const Inventory = require('./Inventory');
 
-export default class Container extends InteractiveObject {
+module.exports = class Container extends Static {
 	constructor(name, description, inventoryItemDescriptors) {
 		super(name, description);
 		this.inventory = new Inventory(inventoryItemDescriptors, this);

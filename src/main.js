@@ -1,12 +1,12 @@
 const io = require('./io');
 
+'<command> <arg1:Type> <arg2:Type> ...';
+
 io.question('What is your name, adventurer?', name => {
 	const cName = io.color('cyan', name);
 	io.log('Welcome to Infinite Winds, ' + cName + '.');
-	io.processCommands(command => {
-		if (command[0] === '/') {
-			io.warn('Unknown command...');
-		} else io.println(`${cName}: ${command}`);
+	io.processCommands((text, cmd, args) => {
+		if (text) return io.send(`${cName}: ${text}`);
 	});
 });
 

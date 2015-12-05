@@ -172,52 +172,40 @@ function blur(m) {
 }
 
 function temperatureMap(heightMap, waterlevel) {
-	const tow = 0.0001;
+	// const tow = 0.0001;
 	const step = y => y;
-	const size = heightMap.size()[0];
-	const noise = mDiamondSquare(size, [
-		[32, (p, c) => p + c * frand()],
-		[16, (p, c) => p + c * frand() * 2],
-		// [8, (p, c) => p + c * frand() * 0.4],
-	]);
-	// debug only!!
-	// save(noise, 'temp_noise.jpg');
-
-	const m = math.zeros(size, size);
-
-	const wTemp = waterlevel - tow * 0.5;
-	const lMult = 1 - (waterlevel - tow * 0.5);
-
-	const doForY = (x, y, t) => {
-		const height = heightMap.subset(mi(x, y));
-		const lTemp = (1 - lMult * height);
-		m.subset(mi(x, y), (
-			t * (height < waterlevel ? wTemp : lTemp)// +
-			// 1 - 0.001 * noise.subset(mi(x, y))
-		));
-	};
-	const hs = size / 2;
-	for (let y = 0; y < hs; y++) {
-		const t = 1 - step(y / hs);
-		for (let x = 0; x < size; x++) {
-			doForY(x, hs - y, t);
-			doForY(x, hs + y, t);
-		}
-	}
-	return m;
+	// const noise = mDiamondSquare(size, [
+	// 	[32, (p, c) => p + c * frand()],
+	// 	[16, (p, c) => p + c * frand() * 2],
+	// ]);
+	const hs = heightMap.size()[0] / 2;
+	return heightMap.map((value, index) => {
+		const t = 1 - Math.abs(step(index[1] - hs)) / hs;
+		return (1 - (value > waterlevel ? value : waterlevel)) * t;
+	});
 }
 
 const io = require('./io');
-const canvas = document.createElement('canvas');
-io.setStyle(canvas, {
+const canvasHolder = document.createElement('div');
+io.setStyle(canvasHolder, {
 	position: 'absolute',
 	right: '10px',
 	top: '10px',
+});
+document.body.appendChild(canvasHolder);
+const canvas = document.createElement('canvas');
+io.setStyle(canvas, {
 	outline: 'solid thin cyan',
 	opacity: '0.7',
 });
 canvas.height = canvas.width = mapSize;
-document.body.appendChild(canvas);
+canvasHolder.appendChild(canvas);
+canvasHolder.appendChild(document.createElement('br'));
+
+// canvas.onClick(e => {
+//
+// });
+
 const ctx = canvas.getContext('2d');
 function setPixel(imageData, x, y, r, g, b, a) {
 	let idx = (x + y * imageData.width) * 4;
@@ -226,7 +214,7 @@ function setPixel(imageData, x, y, r, g, b, a) {
 	imageData.data[idx++] = b;
 	imageData.data[idx] = a;
 }
-function draw(m, showWater) {
+function draw(m, showWater, waterlevel) {
 	const size = m.size()[0];
 	const imageData = ctx.createImageData(size, size);
 
@@ -235,8 +223,8 @@ function draw(m, showWater) {
 			const g = m.subset(mi(x, y));
 			const gI = g * 255;
 			setPixel(imageData, x, y, gI, gI,
-				(showWater && g < waterLevel ?
-					(1 - (waterLevel - g)) * 255 : gI), 255);
+				(showWater && g < waterlevel ?
+					(1 - (waterlevel - g)) * 255 : gI), 255);
 		}
 
 	// ctx.fillStyle = "#FF0000";
@@ -244,20 +232,156 @@ function draw(m, showWater) {
 	ctx.putImageData(imageData, 0, 0);
 }
 
-// console.log('init');
-// const stop = profile();
-const height = mDiamondSquare(mapSize, [
-	[32, (p, c) => p + c * frand()],
-	[16, (p, c) => p + c * frand() * 0.3],
-	[8, (p, c) => p + c * frand() * 0.1],
-	// [16, (p, c) => p + c * frand() * 0.05],
-]);
-// stop2();
+// const mapPoint = {
+// 	temperature, wind, humidity, cloud, height, rainfall
+// }
 
-// draw(height, 1);
-const temperature = temperatureMap(height, waterLevel);
-draw(temperature);
+function evaporate(watermap, pressure, airhumidity, tick) {
+	const evapRate = math.multiply(normalize(math.multiply(pressure, 1)), tick);
 
+	const evapWater = evapRate.map((value, index) => {
+		return value * watermap.subset(mi(...index));
+	});
+
+	return {
+		newWaterMap: math.subtract(
+			watermap,
+			evapWater
+		),
+		newAirHumidity: math.add(
+			airhumidity,
+			evapWater
+		)
+	};
+}
+
+function getWind(pressure) {
+	const wind = math.zeros(mapSize, mapSize, 2);
+	for (let y = 0; y < mapSize; y++)
+		for (let x = 0; x < mapSize; x++) {
+			const a = wSample(pressure, x - 1, y - 1);
+			const b = wSample(pressure, x, y - 1);
+			const c = wSample(pressure, x + 1, y - 1);
+			const d = wSample(pressure, x - 1, y);
+			const e = wSample(pressure, x, y);
+			const f = wSample(pressure, x + 1, y);
+			const g = wSample(pressure, x - 1, y + 1);
+			const h = wSample(pressure, x, y + 1);
+			const i = wSample(pressure, x + 1, y + 1);
+			const posXavg = (c + f + i) / 3;
+			const negXavg = (a + d + g) / 3;
+			const posYavg = (g + h + i) / 3;
+			const negYavg = (a + b + c) / 3;
+			// abc
+			// def
+			// ghi
+			wind.subset(mi(x, y, 0), posXavg - negXavg);
+			wind.subset(mi(x, y, 1), posYavg - negYavg);
+		}
+	return wind;
+}
+
+function drawWind(m, negative) {
+	const size = m.size()[0];
+	const imageData = ctx.createImageData(size, size);
+
+	for (let y = 0; y < size; y++)
+		for (let x = 0; x < size; x++) {
+			const wx = m.subset(mi(x, y, 0));
+			const wy = m.subset(mi(x, y, 1));
+			if (negative) {
+				const gIr = wx < 0 ? - wx * 255 * 100 : 0;
+				const gIb = wy < 0 ? - wy * 255 * 100 : 0;
+				setPixel(imageData, x, y, gIr, 0, gIb, 255);
+			} else {
+				const gIr = wx > 0 ? wx * 255 * 100 : 0;
+				const gIb = wy > 0 ? wy * 255 * 100 : 0;
+				setPixel(imageData, x, y, gIr, 0, gIb, 255);
+			}
+		}
+
+	// ctx.fillStyle = "#FF0000";
+	// ctx.fillRect(0, 0, size, size);
+	ctx.putImageData(imageData, 0, 0);
+}
+function blowWind(wind, airtemperature, airhumidity, tick) {
+	const tickInMinutes = tick * 24 * 60;
+	const size = airhumidity.size()[0];
+	wind.forEach((value, index) => {
+		console.log(index);
+	});
+	// const newAirHumidity = airhumidity.map((value, index) => {
+	// 	// console.log(index);
+	// 	return value;
+	// });
+}
+
+const $height = document.createElement('button');
+$height.innerHTML = 'h';
+canvasHolder.appendChild($height);
+const $temperature = document.createElement('button');
+$temperature.innerHTML = 't';
+canvasHolder.appendChild($temperature);
+const $watermap = document.createElement('button');
+$watermap.innerHTML = 'w';
+canvasHolder.appendChild($watermap);
+canvasHolder.appendChild(document.createElement('br'));
+const $windP = document.createElement('button');
+$windP.innerHTML = 'w+';
+canvasHolder.appendChild($windP);
+const $windN = document.createElement('button');
+$windN.innerHTML = 'w-';
+canvasHolder.appendChild($windN);
+const $airhumidity = document.createElement('button');
+$airhumidity.innerHTML = 'ah';
+canvasHolder.appendChild($airhumidity);
+const $airTemperature = document.createElement('button');
+$airTemperature.innerHTML = 'at';
+canvasHolder.appendChild($airTemperature);
+// console.log(float);
+function createMap(size, waterlevel) {
+	const height = mDiamondSquare(size, [
+		[32, (p, c) => p + c * frand()],
+		[16, (p, c) => p + c * frand() * 0.3],
+		[8, (p, c) => p + c * frand() * 0.1],
+		// [16, (p, c) => p + c * frand() * 0.05],
+	]);
+
+	const temperature = temperatureMap(height, waterlevel); // pressure
+	const airTemperature = temperature;
+
+	let watermap = math.zeros(size, size);
+	for (let y = 0; y < size; y++)
+		for (let x = 0; x < size; x++) {
+			const h = height.subset(mi(x, y));
+			watermap.subset(mi(x, y),
+				h <= waterlevel ? waterlevel - h : 0);
+		}
+
+	draw(height);
+
+	let airHumidity = math.zeros(size, size);
+	const evap = evaporate(watermap, temperature, airHumidity, 0.3);
+	airHumidity = normalize(evap.newAirHumidity);
+	watermap = normalize(evap.newWaterMap);
+
+	const wind = getWind(temperature);
+	blowWind(wind, airTemperature, airHumidity, 1);
+
+	$height.onclick = () => draw(height, 1, waterlevel);
+	$airhumidity.onclick = () => draw(airHumidity);
+	$temperature.onclick = () => draw(temperature);
+	$watermap.onclick = () => draw(watermap);
+	$windP.onclick = () => drawWind(wind);
+	$windN.onclick = () => drawWind(wind, true);
+	$airTemperature.onclick = () => draw(airTemperature);
+	// draw(height, 1, waterlevel);
+	// blowWind(getWind(pressure), )
+
+	// draw(height, 1);
+	// draw(temperature);
+}
+const map = createMap(128, 0.5);
 // Assuming, there is currently no wind (not a solid assumption),
 // temperature is either directly or inversely proportional
 // (depending if we are talking surface or high-altitude) to pressure.

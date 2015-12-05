@@ -53,13 +53,24 @@ function question(label, callback) {
 }
 
 let processCommandCallback = () => {};
+
 input.onkeypress = e => {
 	if (e.keyCode === 13 && input.value.trim()) {
+		const text = input.value.trim();
 		if (questionCallback) {
 			questionCallback(input.value);
 			questionCallback = false;
 		} else
-			processCommandCallback(input.value);
+			if (text[0] === '/') {
+				const res = text.match(/((?!\")\w+(?!\")?)|\"([^\"]+)\"/g);
+				const cmd = res.shift();
+				const args = res.map(val => val[0] === '"' ?
+					val.substring(1, val.length - 1) : val)
+
+				if (!processCommandCallback(null, cmd, args))
+					warn('Unknown command...');
+
+			} else processCommandCallback(input.value);
 
 		input.value = '';
 	}
@@ -68,6 +79,12 @@ input.onkeypress = e => {
 function processCommands(gamef) {
 	processCommandCallback = gamef;
 }
+// class Command {
+// 	constructor(name, arguments) {
+//
+// 	}
+// }
+// function hookCommand(name, callback)
 
 module.exports = {
 	println, color,

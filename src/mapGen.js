@@ -137,6 +137,22 @@ function mDiamondSquare(size, _steps) {
 	return normalize(m);
 }
 
+function diffuse(N, b, m, m0, diff, dt) {
+	const a = dt * diff * N * N;
+	for (let k = 0; k < 20; k++) {
+		for (let i = 0; i < N; i++)
+			for (let j = 0; j < N; j++)
+				wSetSample(m, i, j,
+					wSample(m0, i, j) + a * (
+						wSample(m, i - 1, j) +
+						wSample(m, i + 1, j) +
+						wSample(m, i, j - 1) +
+						wSample(m, i, j + 1)
+					) / (1 + 4 * a)
+				);
+		// set_bnd(N, b, m);
+	}
+}
 // function trunc(m, tval, cond = (v, t) => v < t) {
 // 	const size = m.size()[0];
 // 	const result = math.zeros(size, size);
@@ -256,7 +272,8 @@ function evaporate(watermap, pressure, airhumidity, tick) {
 }
 
 function getWind(pressure) {
-	const wind = math.zeros(mapSize, mapSize, 2);
+	const windX = math.zeros(mapSize, mapSize);
+	const windY = math.zeros(mapSize, mapSize);
 	for (let y = 0; y < mapSize; y++)
 		for (let x = 0; x < mapSize; x++) {
 			const a = wSample(pressure, x - 1, y - 1);
@@ -275,20 +292,19 @@ function getWind(pressure) {
 			// abc
 			// def
 			// ghi
-			wind.subset(mi(x, y, 0), posXavg - negXavg);
-			wind.subset(mi(x, y, 1), posYavg - negYavg);
+			windX.subset(mi(x, y), posXavg - negXavg);
+			windY.subset(mi(x, y), posYavg - negYavg);
 		}
-	return wind;
+	return {x: windX, y: windY};
 }
 
-function drawWind(m, negative) {
-	const size = m.size()[0];
+function drawWind(wind, negative) {
+	const size = wind.x.size()[0];
 	const imageData = ctx.createImageData(size, size);
-
 	for (let y = 0; y < size; y++)
 		for (let x = 0; x < size; x++) {
-			const wx = m.subset(mi(x, y, 0));
-			const wy = m.subset(mi(x, y, 1));
+			const wx = wind.x.subset(mi(x, y));
+			const wy = wind.y.subset(mi(x, y));
 			if (negative) {
 				const gIr = wx < 0 ? - wx * 255 * 100 : 0;
 				const gIb = wy < 0 ? - wy * 255 * 100 : 0;
@@ -299,17 +315,90 @@ function drawWind(m, negative) {
 				setPixel(imageData, x, y, gIr, 0, gIb, 255);
 			}
 		}
-
-	// ctx.fillStyle = "#FF0000";
-	// ctx.fillRect(0, 0, size, size);
 	ctx.putImageData(imageData, 0, 0);
 }
-function blowWind(wind, airtemperature, airhumidity, tick) {
-	const tickInMinutes = tick * 24 * 60;
-	const size = airhumidity.size()[0];
-	wind.forEach((value, index) => {
-		console.log(index);
+// mat2 is an xy
+function transport(mat1, d) {
+	const size = mat1.size()[0];
+	const result = math.zeros(size, size);
+	mat1.forEach((value, index) => {
+		const x = index[0];
+		const y = index[1];
+		const mat2valX = d.x.subset(mi(x, y));
+		const mat2valY = d.y.subset(mi(x, y));
+		const changeInX = mat2valX > 0 ? 1 : -1;
+		const changeInY = mat2valY > 0 ? 1 : -1;
+		const quantity = (Math.abs(mat2valX) + Math.abs(mat2valY));
+		wSetSample(result, x, y, value - quantity);
+		const v = wSample(result, x + changeInX, y + changeInY);
+		wSetSample(result, x + changeInX, y + changeInY, v + quantity);
 	});
+	return result;
+}
+function advectForward(N, m, v, dt) {
+	// const om = m.clone();
+	const nm = math.zeros(N, N);
+
+	m.forEach((val, index) => {
+		const x = index[0];
+		const y = index[1];
+		// velocity
+		const vx = v.x.subset(mi(x, y));
+		const vy = v.y.subset(mi(x, y));
+		// new position for value
+		const px = x + vx * dt;
+		const py = y + vy * dt;
+		// surrounding points coordinates
+		const x0 = Math.floor(px);
+		const y0 = Math.floor(py);
+		const x1 = x0 + 1;
+		const y1 = y0 + 1;
+		// coordinates in relation to top left corner
+		const dx = px - x0;
+		const dy = py - y0;
+		// amount that goes into the points at x0
+		const vx0 = (1 - dx) * val;
+		// amount that goes into the points at x1
+		const vx1 = val - vx0;
+		// POINTS A & C
+		const vx0y0 = (1 - dy) * vx0;
+		const vx0y1 = vx0 - vx0y0;
+		// POINTS B & D
+		const vx1y0 = (1 - dy) * vx1;
+		const vx1y1 = vx1 - vx1y0;
+
+		wSetSample(nm, x0, y0,
+			wSample(nm, x0, y0) + vx0y0);
+		wSetSample(nm, x0, y1,
+			wSample(nm, x0, y1) + vx0y1);
+		wSetSample(nm, x1, y0,
+			wSample(nm, x1, y0) + vx1y0);
+		wSetSample(nm, x1, y1,
+			wSample(nm, x1, y1) + vx1y1);
+	});
+	return nm;
+}
+// https://www.ibiblio.org/e-notes/webgl/gpu/advect.htm
+// https://en.wikipedia.org/wiki/Bilinear_interpolation
+// http://www.dgp.toronto.edu/people/stam/reality/Research/pdf/GDC03.pdf
+// These causes are the three terms on the right hand
+// side of the equal sign in the equation. The first term says that the density should follow the
+// velocity field, the second states that the density may diffuse at a certain rate and the third term
+// says that the density increases due to sources.
+// advection + self-advection
+// http://www.gamasutra.com/view/feature/1549/practical_fluid_dynamics_part_1.php?print=1
+function blowWind(N, wind, airtemperature, airhumidity, dt) {
+	return {
+		newAirHumidity: advectForward(N, airhumidity, wind, dt),
+		newAirTemperature: advectForward(N, airtemperature, wind, dt),
+		newWind: {
+			x: advectForward(N, wind.x, wind, dt),
+			y: advectForward(N, wind.y, wind, dt)
+		},
+		// newAirHumidity: transport(airhumidity, wind),
+		// newAirTemperature: transport(airtemperature, wind),
+		// newWind: {x: transport(wind.x, wind), y: transport(wind.y, wind) },
+	}
 	// const newAirHumidity = airhumidity.map((value, index) => {
 	// 	// console.log(index);
 	// 	return value;
@@ -338,6 +427,10 @@ canvasHolder.appendChild($airhumidity);
 const $airTemperature = document.createElement('button');
 $airTemperature.innerHTML = 'at';
 canvasHolder.appendChild($airTemperature);
+canvasHolder.appendChild(document.createElement('br'));
+const $blowWind = document.createElement('button');
+$blowWind.innerHTML = 'blow';
+canvasHolder.appendChild($blowWind);
 // console.log(float);
 function createMap(size, waterlevel) {
 	const height = mDiamondSquare(size, [
@@ -348,7 +441,7 @@ function createMap(size, waterlevel) {
 	]);
 
 	const temperature = temperatureMap(height, waterlevel); // pressure
-	const airTemperature = temperature;
+	let airTemperature = temperature;
 
 	let watermap = math.zeros(size, size);
 	for (let y = 0; y < size; y++)
@@ -365,8 +458,9 @@ function createMap(size, waterlevel) {
 	airHumidity = normalize(evap.newAirHumidity);
 	watermap = normalize(evap.newWaterMap);
 
-	const wind = getWind(temperature);
-	blowWind(wind, airTemperature, airHumidity, 1);
+	let wind = getWind(temperature);
+	advectForward(size, airHumidity, wind, 70);
+	// blowWind(wind, airTemperature, airHumidity, 1);
 
 	$height.onclick = () => draw(height, 1, waterlevel);
 	$airhumidity.onclick = () => draw(airHumidity);
@@ -375,6 +469,13 @@ function createMap(size, waterlevel) {
 	$windP.onclick = () => drawWind(wind);
 	$windN.onclick = () => drawWind(wind, true);
 	$airTemperature.onclick = () => draw(airTemperature);
+	$blowWind.onclick = () => {
+		const bw = blowWind(size, wind, airTemperature, airHumidity, 100);
+		airTemperature = bw.newAirTemperature;
+		airHumidity = bw.newAirHumidity;
+		wind = bw.newWind;
+		// airHumidity = advectForward(size, airHumidity, wind, 100);
+	};
 	// draw(height, 1, waterlevel);
 	// blowWind(getWind(pressure), )
 

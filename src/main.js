@@ -10,4 +10,4 @@ io.question('What is your name, adventurer?', name => {
 	});
 });
 
-require('./mapGen');
+require('./map');

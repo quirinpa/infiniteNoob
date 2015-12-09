@@ -82,13 +82,9 @@ canvasHolder.appendChild($w);
 
 canvasHolder.appendChild(document.createElement('br'));
 
-const $wiP = document.createElement('button');
-$wiP.innerHTML = 'w+';
-canvasHolder.appendChild($wiP);
-
-const $wiN = document.createElement('button');
-$wiN.innerHTML = 'w-';
-canvasHolder.appendChild($wiN);
+const $wi = document.createElement('button');
+$wi.innerHTML = 'wi';
+canvasHolder.appendChild($wi);
 
 const $ah = document.createElement('button');
 $ah.innerHTML = 'ah';
@@ -127,14 +123,13 @@ function createMap(N, wl) {
 	let ah = (new Array(N * N)).fill(0);
 	let wi = getInitialWind(N, t, 100);
 
-	let cm = 'h';
+	let cm = 'ah';
 	const m = {h, ah, t, w, at, wi};
 	$h.onclick = () => cm = 'h';
 	$ah.onclick = () => cm = 'ah';
 	$t.onclick = () => cm = 't';
 	$w.onclick = () => cm = 'w';
-	$wiP.onclick = () => cm = 'wi+';
-	$wiN.onclick = () => cm = 'wi-';
+	$wi.onclick = () => cm = 'wi';
 	$at.onclick = () => cm = 'at';
 
 	let lastTick = (new Date()).getTime();
@@ -144,19 +139,10 @@ function createMap(N, wl) {
 		lastTick = newTick;
 
 		evaporate(m, dt);
-		// m.ah = e.ah;
-		// m.w = e.w;
+		blowWind(N, m, dt, 100);
 
-
-		blowWind(N, m, dt, 1);
-		// m.at = bw.at;
-		// m.ah = bw.ah;
-		// m.wi = bw.wi;
-
-		if (cm === 'wi+')
+		if (cm === 'wi')
 			renderVelocities(N, m.wi);
-		else if (cm === 'wi-')
-			renderVelocities(N, m.wi, true);
 		else render(N, m[cm]);
 
 		// setTimeout(step, 1000);

@@ -1,4 +1,5 @@
 "use strict";
+// what if velocity comes from the middle of the cell?
 module.exports = (N, m0s, v, dt) => {
 	m0s.push(v.x);
 	m0s.push(v.y);

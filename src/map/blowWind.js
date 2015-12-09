@@ -1,6 +1,6 @@
 "use strict";
 const advectForward = require('./advectForward');
-const diffuse = require('./diffusion');
+const diffuse = require('./gs-diffusion');
 // // Apply the first 3 operators in Equation 12.
 // u = advect(u);
 // u = diffuse(u);

@@ -1,8 +1,9 @@
 "use strict";
+// works for large values of diff
 module.exports = (N, m0s, diff, dt) => {
 	const a = dt * diff;
+	const b = 1 + 4 * a;
 	const ms = m0s.map(() => new Array(N * N));
-	// for (let k = 0; k < 20; k ++) {
 	for (let y = 0; y < N; y++) {
 		const yN = y * N;
 		const y0N = (y === 0 ? N - 1 : y - 1) * N;
@@ -15,13 +16,11 @@ module.exports = (N, m0s, diff, dt) => {
 				const m = ms[i];
 				const m0 = m0s[i];
 
-				const discreteLaplacian = (
+				m[x + yN] =  (m0[x + yN] + (
 					m0[x + y0N] +
 					m0[x0 + yN] + m0[x1 + yN] +
-					m0[x + y1N] -
-					4 *  m0[x + yN]
-				); // / (dx)^2 = 1
-				m[x + yN] =  m0[x + yN] + a * discreteLaplacian;
+					m0[x + y1N]
+				) * a) / b;
 			}
 		}
 	}

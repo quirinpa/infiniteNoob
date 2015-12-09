@@ -1,11 +1,9 @@
 "use strict";
-module.exports = (w, p, ah, dt) => {
-	const d = p
-		.map(val => val * dt) // rate of evaporation
-		.map((val, idx) => val * w[idx]); // evaporated density
+// https://en.wikipedia.org/wiki/Evaporation#Factors_influencing_the_rate_of_evaporation
+module.exports = (m, dt) => {
+	const d = m.t
+		.map((val, idx) => val * dt * (m.w[idx] - m.ah[idx]));
 
-	return {
-		w: w.map((val, idx) => val - d[idx]),
-		ah: ah.map((val, idx) => val + d[idx])
-	};
+	m.w = m.w.map((val, idx) => val - d[idx]);
+	m.ah = m.ah.map((val, idx) => val + d[idx])
 };

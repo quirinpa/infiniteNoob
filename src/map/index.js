@@ -48,7 +48,7 @@ function render(N, m, wl) {
 function renderVelocities(N, v, neg) {
 	const imageData = ctx.createImageData(N, N);
 	const r = imageData.data;
-	const m = (neg ? -1 : 1) * 255 * 100;
+	const m = 255;
 
 	for (let y = 0; y < N; y++) {
 		const yN = y * N;
@@ -58,9 +58,9 @@ function renderVelocities(N, v, neg) {
 			const vy = v.y[idx];
 			idx *= 4;
 
-			r[idx++] = (vx < 0 ? m * vx : 0);
+			r[idx++] = (vx + 1) * m / 2;
 			r[idx++] = 0;
-			r[idx++] = (vy < 0 ? m * vy : 0);
+			r[idx++] = (vy + 1) * m / 2;
 			r[idx] = 255;
 		}
 	}
@@ -100,9 +100,9 @@ canvasHolder.appendChild($at);
 
 canvasHolder.appendChild(document.createElement('br'));
 
-const $blowWind = document.createElement('button');
-$blowWind.innerHTML = 'blow';
-canvasHolder.appendChild($blowWind);
+// const $blowWind = document.createElement('button');
+// $blowWind.innerHTML = 'blow';
+// canvasHolder.appendChild($blowWind);
 
 const frand = require('./frand');
 const diamondSquare = require('./diamondSquare');
@@ -122,29 +122,48 @@ function createMap(N, wl) {
 	const t = temperatureMap(N, h, wl); // also pressure?
 	let at = t; // air temperature
 
+	// render(N, h);
 	let w = h.map(val => val <= wl ? wl - val : 0); // water on the map
+	let ah = (new Array(N * N)).fill(0);
+	let wi = getInitialWind(N, t, 100);
 
-	render(N, h);
+	let cm = 'h';
+	const m = {h, ah, t, w, at, wi};
+	$h.onclick = () => cm = 'h';
+	$ah.onclick = () => cm = 'ah';
+	$t.onclick = () => cm = 't';
+	$w.onclick = () => cm = 'w';
+	$wiP.onclick = () => cm = 'wi+';
+	$wiN.onclick = () => cm = 'wi-';
+	$at.onclick = () => cm = 'at';
 
-	const evap = evaporate(w, t, (new Array(N * N)).fill(0), 0.3);
-	let ah = evap.ah;
-	w = evap.w;
+	let lastTick = (new Date()).getTime();
+	const step = () => {
+		const newTick = (new Date()).getTime();
+		const dt = (newTick - lastTick) * 0.001;
+		lastTick = newTick;
 
-	let wi = getInitialWind(N, t);
+		evaporate(m, dt);
+		// m.ah = e.ah;
+		// m.w = e.w;
 
-	$h.onclick = () => render(N, h, wl);
-	$ah.onclick = () => render(N, ah);
-	$t.onclick = () => render(N, t);
-	$w.onclick = () => render(N, w);
-	$wiP.onclick = () => renderVelocities(N, wi);
-	$wiN.onclick = () => renderVelocities(N, wi, true);
-	$at.onclick = () => render(N, at);
-	$blowWind.onclick = () => {
-		const bw = blowWind(N, wi, at, ah, 100);
-		at = bw.at;
-		ah = bw.ah;
-		wi = bw.wi;
+
+		blowWind(N, m, dt, 1);
+		// m.at = bw.at;
+		// m.ah = bw.ah;
+		// m.wi = bw.wi;
+
+		if (cm === 'wi+')
+			renderVelocities(N, m.wi);
+		else if (cm === 'wi-')
+			renderVelocities(N, m.wi, true);
+		else render(N, m[cm]);
+
+		// setTimeout(step, 1000);
+		requestAnimationFrame(step);
 	};
+
+	step();
 }
 
 const map = createMap(mapSize, 0.2);

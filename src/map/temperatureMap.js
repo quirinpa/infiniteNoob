@@ -12,7 +12,7 @@ module.exports = (N, hm, wl) => {
 	for (let y = 0; y < hN; y++) {
 		const t = 1 - y / hN;
 
-		const yUN = (hN - y) * N;
+		const yUN = (hN - y - 1) * N;
 		const yDN = (hN + y) * N;
 
 		for (let x = 0; x < N; x++) {
@@ -21,7 +21,18 @@ module.exports = (N, hm, wl) => {
 		}
 	}
 
-	// return normalize(m);
+	// test
+	// const testT = debugText => {
+	// 	const hasNaN = [];
+	// 	const c = N * N;
+	// 	for (let i = 0; i < c; i++) {
+	// 		if (isNaN(m[i])) hasNaN.push(i);
+	// 	}
+	// 	console.log('test T: ' + debugText, 'hasNaN:', hasNaN, m);
+	// }
+	// testT('init');
+	// t is no longer NaN on the first line
+
 	return m;
 }
 

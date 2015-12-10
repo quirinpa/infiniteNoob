@@ -5,7 +5,10 @@ module.exports = (m, dt, rate) => {
 	// assume surface area is equal in all squares
 	// (rivers should have less)
 	const e = rate * dt;
-	const amount = m.w.map(val => e <= val ? e : val);
+	const amount = m.w.map((val, idx) => {
+		const re = e * m.t[idx];
+		return re <= val ? re : val;
+	});
 	m.w = m.w.map((val, idx) => val - amount[idx]);
 	m.ah = m.ah.map((val, idx) => val + amount[idx]);
 };

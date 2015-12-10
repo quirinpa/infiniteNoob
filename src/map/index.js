@@ -57,8 +57,17 @@ const renderVelocities = (N, v) => rHelper(N, idx => {
 		(vx + 1) / 2,
 		0,
 		(vy + 1) / 2,
-		255,
+		1,
 	];
+});
+
+const renderTemperature = (N, t) => rHelper(N, idx => {
+	return [
+		t[idx],
+		0,
+		1 - t[idx],
+		1
+	]
 });
 
 const screen = (a, b) => 1 - (1 - a) * (1 - b);
@@ -68,10 +77,10 @@ const renderFull = (N, m) => rHelper(N, idx => {
 	const w = m.w[idx];
 	const ah = m.ah[idx];
 	return [
-		screen(h, ah),
-		0.5 + screen(h, ah) * 0.5,
+		screen(overlay(h, w ? 0 : 1), ah),
+		0.5 + screen(overlay(h, w ? 0 : 1), ah) * 0.5,
 		screen(w, ah),
-		255
+		1
 	];
 });
 
@@ -93,6 +102,7 @@ const evaporate = require('./evaporate');
 const getInitialWind = require('./getInitialWind');
 const advectForward = require('./advectForward');
 const blowWind = require('./blowWind');
+const copyM = require('./copyM');
 // const normalize = require('./normalize');
 function createMap(N, wl) {
 	const h = diamondSquare(N, [
@@ -102,8 +112,8 @@ function createMap(N, wl) {
 	]);
 
 	const t = temperatureMap(N, h, wl); // also pressure?
-	const p = t;
-	let at = t;
+	const p = copyM(t);
+	let at = copyM(t);
 
 	let w = h.map(val => val <= wl ? wl - val : 0); // water on the map
 	let ah = (new Array(N * N)).fill(0);
@@ -120,31 +130,36 @@ function createMap(N, wl) {
 	addButton('at', () => cm = 'at');
 
 	let lastTick = (new Date()).getTime();
-	const step = () => {
+	const step = i => {
 		const newTick = (new Date()).getTime();
 		const dt = (newTick - lastTick) * 0.001;
 		lastTick = newTick;
-		const sunWarmness = 1;
-		const evapRate = 0.001;
+		const sunWarmness = 0.1;
+		const evapRate = 0.05;
 		const airDiffusion = 0.5;
 
-		// heat air
-		// fails due to me not realising the need for backward advocation (i think)
-		// m.at = m.at.map((val, idx) =>
-		// 	val + dt * sunWarmness * t[idx]);
-
+		m.at = m.at.map((val, idx) => val + dt * sunWarmness * t[idx]);
 		evaporate(m, dt, evapRate);
 		blowWind(N, m, dt, airDiffusion);
 
-		if (cm === 'wi')
+		switch (cm) {
+		case 'wi':
 			renderVelocities(N, m.wi);
-		else if (cm === 'fu')
+			break;
+		case 'fu':
 			renderFull(N, m);
-		else render(N, m[cm]);
+			break;
+		case 't':
+		case 'at':
+			renderTemperature(N, m[cm]);
+			break;
+		default:
+			render(N, m[cm]);
+		}
 
-		requestAnimationFrame(step);
+		requestAnimationFrame(() => step(i + 1));
 	};
-	step();
+	step(0);
 }
 
 const map = createMap(mapSize, 0.2);

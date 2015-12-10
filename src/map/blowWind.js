@@ -17,6 +17,7 @@ module.exports = (N, m, dt, diff) => {
 	m.at = a();
 	m.ah = a();
 	m.wi = { x: a(), y: a() };
+
 	// m.at = d[0];
 	// m.ah = d[1];
 	// m.wi = {

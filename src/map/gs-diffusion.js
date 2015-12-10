@@ -25,5 +25,5 @@ module.exports = (N, m0s, diff, dt) => {
 		}
 	}
 
-	return ms;
+	return () => ms.shift();
 }

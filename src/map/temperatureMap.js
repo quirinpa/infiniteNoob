@@ -1,4 +1,5 @@
 "use strict";
+const normalize = require('./normalize');
 module.exports = (N, hm, wl) => {
 	const m = new Array(N * N);
 
@@ -20,6 +21,7 @@ module.exports = (N, hm, wl) => {
 		}
 	}
 
+	// return normalize(m);
 	return m;
 }
 

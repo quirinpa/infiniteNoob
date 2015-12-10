@@ -1,9 +1,11 @@
 "use strict";
 // https://en.wikipedia.org/wiki/Evaporation#Factors_influencing_the_rate_of_evaporation
-module.exports = (m, dt) => {
-	const d = m.t
-		.map((val, idx) => val * dt * (m.w[idx] - m.ah[idx]));
-
-	m.w = m.w.map((val, idx) => val - d[idx]);
-	m.ah = m.ah.map((val, idx) => val + d[idx])
+module.exports = (m, dt, rate) => {
+	// const amount = m.w.map(val => val * dt);
+	// assume surface area is equal in all squares
+	// (rivers should have less)
+	const e = rate * dt;
+	const amount = m.w.map(val => e <= val ? e : val);
+	m.w = m.w.map((val, idx) => val - amount[idx]);
+	m.ah = m.ah.map((val, idx) => val + amount[idx]);
 };

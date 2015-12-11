@@ -70,16 +70,23 @@ const renderTemperature = (N, t) => rHelper(N, idx => {
 	]
 });
 
+// https://en.wikipedia.org/wiki/Blend_modes
+const multiply = (a, b) => a * b;
 const screen = (a, b) => 1 - (1 - a) * (1 - b);
 const overlay = (a, b) => a < 0.5 ? 2 * a * b : 1 - 2 * (1 - a) * (1 - b);
+const pegtop = (a, b) => (1 - 2 * b) * a * a + 2 * b * a;
 const renderFull = (N, m) => rHelper(N, idx => {
 	const h = m.h[idx];
 	const w = m.w[idx];
 	const ah = m.ah[idx];
+	let il = m.s[idx];
+	if (il < 0) il = 0;
+	const s = 0.2 + (il < 0 ? 0 : il) * 0.8;
+	const w0 = (w ? 0 : h);
 	return [
-		screen(overlay(h, w ? 0 : 1), ah),
-		0.5 + screen(overlay(h, w ? 0 : 1), ah) * 0.5,
-		screen(w, ah),
+		(w0 * s + ah),
+		(w0 * s + ah),
+		(w * s + ah),
 		1
 	];
 });
@@ -103,8 +110,21 @@ const getInitialWind = require('./getInitialWind');
 const advectForward = require('./advectForward');
 const blowWind = require('./blowWind');
 const copyM = require('./copyM');
+const calcSun = require('./sun');
+const getSlope = require('./getSlope');
 // const normalize = require('./normalize');
 function createMap(N, wl) {
+	let cm = 'fu';
+
+	addButton('fu', () => cm = 'fu');
+	addButton('h', () => cm = 'h');
+	addButton('t', () => cm = 't');
+	// addButton('st', () => cm = 'st');
+	addButton('w', () => cm = 'w');
+	addButton('wi', () => cm = 'wi');
+	addButton('ah', () => cm = 'ah');
+	addButton('at', () => cm = 'at');
+
 	const h = diamondSquare(N, [
 		[32, (p, c) => p + c * frand()],
 		[16, (p, c) => p + c * frand() * 0.3],
@@ -112,34 +132,41 @@ function createMap(N, wl) {
 	]);
 
 	const t = temperatureMap(N, h, wl); // also pressure?
-	const p = copyM(t);
-	let at = copyM(t);
 
-	let w = h.map(val => val <= wl ? wl - val : 0); // water on the map
-	let ah = (new Array(N * N)).fill(0);
-	let wi = getInitialWind(N, p, 100);
-
-	let cm = 'fu';
-	const m = {h, ah, t, w, at, wi};
-	addButton('fu', () => cm = 'fu');
-	addButton('h', () => cm = 'h');
-	addButton('t', () => cm = 't');
-	addButton('w', () => cm = 'w');
-	addButton('wi', () => cm = 'wi');
-	addButton('ah', () => cm = 'ah');
-	addButton('at', () => cm = 'at');
-
+	// sun position/temperature
+	const averageTemperature = 0.5;
 	let lastTick = (new Date()).getTime();
+	const zeros = (new Array(N * N)).fill(0);
+	const m = {
+		h,
+		w: h.map(val => val <= wl ? wl - val : 0),
+		ah: zeros,
+		t,
+		p: t,
+		at: t,
+		ct: (new Array(N * N))
+			.fill(averageTemperature),
+		wi: getSlope(N, t)
+	};
+
 	const step = i => {
 		const newTick = (new Date()).getTime();
 		const dt = (newTick - lastTick) * 0.001;
 		lastTick = newTick;
 		const sunWarmness = 0.1;
-		const evapRate = 0.05;
-		const airDiffusion = 0.5;
+		const airDiffusion = 0.1;
+		const thermalSpeed = 0.8;
+		const evapRate = 0.2;
 
-		m.at = m.at.map((val, idx) => val + dt * sunWarmness * t[idx]);
-		evaporate(m, dt, evapRate);
+		// sun
+		m.s = calcSun(N, dt);
+		// m.ct = m.ct.map((val, idx) => val + dt * m.s[idx] * t[idx])
+		// for now, lets not heat up the planet indefinately
+		// m.st = m.s.map((il, idx) => il * t[idx]);
+		const temp = m.s.map((il, idx) => il * thermalSpeed * t[idx] * dt * sunWarmness);
+		m.t = m.t.map((val, idx) => val + temp[idx]);
+		m.at = m.at.map((val, idx) => val + temp[idx]);
+		evaporate(m, dt, sunWarmness * evapRate);
 		blowWind(N, m, dt, airDiffusion);
 
 		switch (cm) {
@@ -151,6 +178,7 @@ function createMap(N, wl) {
 			break;
 		case 't':
 		case 'at':
+		// case 'st':
 			renderTemperature(N, m[cm]);
 			break;
 		default:

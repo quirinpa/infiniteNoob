@@ -7,7 +7,9 @@ module.exports = (m, dt, rate) => {
 	const e = rate * dt;
 	const amount = m.w.map((val, idx) => {
 		const re = e * m.t[idx];
-		return re <= val ? re : val;
+		const amt = re <= val ? re : val;
+		// return re;
+		return amt < 0 ? 0 : amt;
 	});
 	m.w = m.w.map((val, idx) => val - amount[idx]);
 	m.ah = m.ah.map((val, idx) => val + amount[idx]);

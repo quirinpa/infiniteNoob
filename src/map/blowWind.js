@@ -8,6 +8,8 @@ const diffuse = require('./gs-diffusion');
 // // Now apply the projection operator to the result.
 // p = computePressure(u);
 // u = subtractPressureGradient(u, p);
+const getSlope = require('./getSlope');
+const normalize = require('./normalize');
 module.exports = (N, m, dt, diff) => {
 	// add forces - diffuse - move
 	// const d = diffuse(N, adv, diff, dt);
@@ -16,7 +18,20 @@ module.exports = (N, m, dt, diff) => {
 	const a = advectForward(N, [d(), d()], {x: d(), y: d()}, dt);
 	m.at = a();
 	m.ah = a();
-	m.wi = { x: a(), y: a() };
+
+	const tForceHorse = 1;
+	const t = getSlope(N, m.t.map((val, idx) => {
+		const w = m.w[idx];
+		const h = m.h[idx];
+
+		return val - (h - w > 0 ? (h - w) * 5 : 0) - m.at[idx] + m.t[idx] * 2;
+	}));
+	// t.x = normalize(t.x).map(val => val * dt * tForceHorse);
+	// t.y = normalize(t.y).map(val => val * dt * tForceHorse);
+	m.wi = {
+		x: a().map((val, idx) => val + dt * tForceHorse * t.x[idx]),
+		y: a().map((val, idx) => val + dt * tForceHorse * t.y[idx])
+	};
 
 	// m.at = d[0];
 	// m.ah = d[1];

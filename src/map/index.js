@@ -6,8 +6,8 @@ const io = require('../io');
 const canvasHolder = document.createElement('div');
 io.setStyle(canvasHolder, {
 	position: 'absolute',
-	right: '10px',
-	top: '10px',
+	right: '0',
+	top: '0',
 });
 document.body.appendChild(canvasHolder);
 
@@ -82,11 +82,13 @@ const renderFull = (N, m) => rHelper(N, idx => {
 	let il = m.s[idx];
 	if (il < 0) il = 0;
 	const s = 0.2 + (il < 0 ? 0 : il) * 0.8;
+	// const s = 1;
 	const w0 = (w ? 0 : h);
+	const clouds = ah * (0.2 + s * 0.8);
 	return [
-		(w0 * s + ah),
-		(w0 * s + ah),
-		(w * s + ah),
+		s * h * 0.5 + clouds,
+		s * h + clouds,
+		s * w + clouds,
 		1
 	];
 });
@@ -112,6 +114,8 @@ const blowWind = require('./blowWind');
 const copyM = require('./copyM');
 const calcSun = require('./sun');
 const getSlope = require('./getSlope');
+const condensate = require('./condensate');
+const flowWater = require('./flowWater');
 // const normalize = require('./normalize');
 function createMap(N, wl) {
 	let cm = 'fu';
@@ -119,16 +123,17 @@ function createMap(N, wl) {
 	addButton('fu', () => cm = 'fu');
 	addButton('h', () => cm = 'h');
 	addButton('t', () => cm = 't');
-	// addButton('st', () => cm = 'st');
+	addButton('s', () => cm = 's');
 	addButton('w', () => cm = 'w');
 	addButton('wi', () => cm = 'wi');
+	addButton('wv', () => cm = 'wv');
 	addButton('ah', () => cm = 'ah');
 	addButton('at', () => cm = 'at');
 
 	const h = diamondSquare(N, [
 		[32, (p, c) => p + c * frand()],
-		[16, (p, c) => p + c * frand() * 0.3],
-		[8, (p, c) => p + c * frand() * 0.1],
+		[16, (p, c) => p + c * frand() * 0.1],
+		[8, (p, c) => p + c * frand() * 0.01],
 	]);
 
 	const t = temperatureMap(N, h, wl); // also pressure?
@@ -137,47 +142,54 @@ function createMap(N, wl) {
 	const averageTemperature = 0.5;
 	let lastTick = (new Date()).getTime();
 	const zeros = (new Array(N * N)).fill(0);
+	const avgTemp = (new Array(N * N))
+		.fill(averageTemperature);
+	const w = h.map(val => val <= wl ? wl - val : 0);
 	const m = {
 		h,
-		w: h.map(val => val <= wl ? wl - val : 0),
+		w,
+		wv: getSlope(N, h.map(v => v > wl ? (wl - v)*300 : 0)),
 		ah: zeros,
-		t,
-		p: t,
-		at: t,
-		ct: (new Array(N * N))
-			.fill(averageTemperature),
-		wi: getSlope(N, t)
+		t: t,
+		p: avgTemp,
+		at: avgTemp,
+		ct: avgTemp,
+		wi: getSlope(N, t.map((val, idx) => {
+			return val - h[idx] * 10;
+		}))
 	};
 
+	canvas.onclick = e => {
+		const r = e.target.getBoundingClientRect();
+		const x = Math.round(e.clientX - r.left);
+		const y = Math.round(e.clientY - r.top);
+		m.w[x + y * N] += 2;
+	};
 	const step = i => {
 		const newTick = (new Date()).getTime();
 		const dt = (newTick - lastTick) * 0.001;
 		lastTick = newTick;
-		const sunWarmness = 0.1;
-		const airDiffusion = 0.1;
-		const thermalSpeed = 0.8;
-		const evapRate = 0.2;
-
-		// sun
 		m.s = calcSun(N, dt);
-		// m.ct = m.ct.map((val, idx) => val + dt * m.s[idx] * t[idx])
-		// for now, lets not heat up the planet indefinately
-		// m.st = m.s.map((il, idx) => il * t[idx]);
-		const temp = m.s.map((il, idx) => il * thermalSpeed * t[idx] * dt * sunWarmness);
+		const temp = m.s.map((il, idx) => dt * il * 0.05);
 		m.t = m.t.map((val, idx) => val + temp[idx]);
 		m.at = m.at.map((val, idx) => val + temp[idx]);
-		evaporate(m, dt, sunWarmness * evapRate);
-		blowWind(N, m, dt, airDiffusion);
+		// evaporate(m, dt);
+		// m.w = flowWater(N, m, dt);
+		flowWater(N, m, dt, wl);
+		// condensate(m, dt, 1);
+		// blowWind(N, m, dt, 1);
 
 		switch (cm) {
 		case 'wi':
-			renderVelocities(N, m.wi);
+		case 'wv':
+			renderVelocities(N, m[cm]);
 			break;
 		case 'fu':
 			renderFull(N, m);
 			break;
 		case 't':
 		case 'at':
+		case 's':
 		// case 'st':
 			renderTemperature(N, m[cm]);
 			break;
@@ -185,9 +197,13 @@ function createMap(N, wl) {
 			render(N, m[cm]);
 		}
 
+		ctx.font = "10px Arial";
+		ctx.fillStyle = "red";
+		ctx.fillText("w:" + Math.round(m.w.reduce((r, v) => r + v, 0)), 10, 10);
+		ctx.fillText("ah:" + Math.round(m.ah.reduce((r, v) => r + v, 0)), 10, 20);
 		requestAnimationFrame(() => step(i + 1));
 	};
 	step(0);
 }
 
-const map = createMap(mapSize, 0.2);
+const map = createMap(mapSize, 0.1);

@@ -8,37 +8,30 @@ const diffuse = require('./gs-diffusion');
 // // Now apply the projection operator to the result.
 // p = computePressure(u);
 // u = subtractPressureGradient(u, p);
+
+// https://en.wikipedia.org/wiki/Air_mass
+// go back to viscosity/otherthing
 const getSlope = require('./getSlope');
 const normalize = require('./normalize');
 module.exports = (N, m, dt, diff) => {
-	// add forces - diffuse - move
-	// const d = diffuse(N, adv, diff, dt);
-	const d = diffuse(N, [m.at, m.ah, m.wi.x, m.wi.y], diff, dt);
-	// const adv = advectForward(N, [m.at, m.ah], nw, dt);
-	const a = advectForward(N, [d(), d()], {x: d(), y: d()}, dt);
-	m.at = a();
-	m.ah = a();
-
-	const tForceHorse = 1;
+	const tForceHorse = 5;
 	const t = getSlope(N, m.t.map((val, idx) => {
 		const w = m.w[idx];
 		const h = m.h[idx];
 
-		return val - (h - w > 0 ? (h - w) * 5 : 0) - m.at[idx] + m.t[idx] * 2;
+		return val * (-m.at[idx] * 0.2) - ((h - w > 0 ? (h - w) * 5 : h));
+		// return val;
 	}));
-	// t.x = normalize(t.x).map(val => val * dt * tForceHorse);
-	// t.y = normalize(t.y).map(val => val * dt * tForceHorse);
 	m.wi = {
-		x: a().map((val, idx) => val + dt * tForceHorse * t.x[idx]),
-		y: a().map((val, idx) => val + dt * tForceHorse * t.y[idx])
+		x: m.wi.x.map((val, idx) => val + dt * 0.5 * tForceHorse * t.x[idx]),
+		y: m.wi.y.map((val, idx) => val + dt * 0.5 * tForceHorse * t.y[idx])
 	};
-
-	// m.at = d[0];
-	// m.ah = d[1];
-	// m.wi = {
-	// 	x: d[2],
-	// 	y: d[3]
-	// };
+	const d = diffuse(N, [m.at, m.ah, m.wi.x, m.wi.y], diff, dt * 0.5);
+	const a = advectForward(N, [d(), d()], {x: d(), y: d()}, dt * 0.5);
+	m.at = a();
+	// https://en.wikipedia.org/wiki/Balanced_flow#Antitriptic_flow
+	m.ah = a();
+	m.wi = { x: a(), y: a() };
 };
 
 // https://www.ibiblio.org/e-notes/webgl/gpu/advect.htm

@@ -1,5 +1,5 @@
 "use strict";
-const daysPerTick = 0.5;
+const daysPerTick = 1;
 let sunA = 0;
 module.exports = (N, dt) => {
 	const s = new Array(N * N);

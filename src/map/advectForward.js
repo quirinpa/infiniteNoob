@@ -1,8 +1,8 @@
 "use strict";
 // what if velocity comes from the middle of the cell?
 module.exports = (N, m0s, v, dt) => {
-	m0s.push(v.x);
-	m0s.push(v.y);
+	// m0s.push(v.x);
+	// m0s.push(v.y);
 	const ms = m0s.map(m0 => m0.map(val => 0));
 
 	for (let y = 0; y < N; y++) {

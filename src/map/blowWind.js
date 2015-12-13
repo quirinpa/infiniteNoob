@@ -19,19 +19,19 @@ module.exports = (N, m, dt, diff) => {
 		const w = m.w[idx];
 		const h = m.h[idx];
 
-		return val * (-m.at[idx] * 0.2) - ((h - w > 0 ? (h - w) * 5 : h));
+		return val*22 * (-m.at[idx] * 0.2) - ((h - w > 0 ? (h - w) * 5 : h));
 		// return val;
-	}));
-	m.wi = {
-		x: m.wi.x.map((val, idx) => val + dt * 0.5 * tForceHorse * t.x[idx]),
-		y: m.wi.y.map((val, idx) => val + dt * 0.5 * tForceHorse * t.y[idx])
-	};
-	const d = diffuse(N, [m.at, m.ah, m.wi.x, m.wi.y], diff, dt * 0.5);
-	const a = advectForward(N, [d(), d()], {x: d(), y: d()}, dt * 0.5);
-	m.at = a();
+	}), 1);
+	const nwi = diffuse(N, [
+		m.wi.x.map((val, idx) => val + dt * 0.5 * tForceHorse * t.x[idx]),
+		m.wi.y.map((val, idx) => val + dt * 0.5 * tForceHorse * t.y[idx])
+	], diff, dt * 0.5);
+	const d = diffuse(N, [m.at, m.ah, nwi[0], nwi[1]], diff, dt * 0.5);
+	const a = advectForward(N, [d[0], d[1], d[2], d[3]], {x: d[2], y: d[3]}, dt * 0.5);
+	m.at = a[0];
 	// https://en.wikipedia.org/wiki/Balanced_flow#Antitriptic_flow
-	m.ah = a();
-	m.wi = { x: a(), y: a() };
+	m.ah = a[1];
+	m.wi = { x: a[2], y: a[3] };
 };
 
 // https://www.ibiblio.org/e-notes/webgl/gpu/advect.htm

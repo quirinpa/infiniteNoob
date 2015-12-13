@@ -1,6 +1,6 @@
 "use strict";
 // http://www.dummies.com/how-to/content/how-to-calculate-force-based-on-pressure.html
-module.exports = (N, m) => {
+module.exports = (N, m, factor) => {
 	const sX = new Array(N * N);
 	const sY = new Array(N * N);
 
@@ -29,8 +29,8 @@ module.exports = (N, m) => {
 			const pYa = (g + m[x + y1N] + i) / 3;
 			const nYa = (a + m[x + y0N] + c) / 3;
 
-			sX[x + yN] = (pXa - nXa);
-			sY[x + yN] = (pYa - nYa);
+			sX[x + yN] = (pXa - nXa) * factor;
+			sY[x + yN] = (pYa - nYa) * factor;
 		}
 	}
 

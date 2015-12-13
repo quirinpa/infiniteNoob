@@ -57,5 +57,5 @@ module.exports = (N, m0s, v, dt) => {
 		}
 	}
 
-	return () => ms.shift();
+	return ms;
 };

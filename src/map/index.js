@@ -88,7 +88,8 @@ const renderFull = (N, m) => rHelper(N, idx => {
 	return [
 		s * h * 0.5 + clouds,
 		s * h + clouds,
-		s * w + clouds,
+		// s * w * 2 + clouds,
+		(w > 0.001 ? 0.5 + w * 0.5 : 0) + clouds,
 		1
 	];
 });
@@ -116,7 +117,7 @@ const calcSun = require('./sun');
 const getSlope = require('./getSlope');
 const condensate = require('./condensate');
 const flowWater = require('./flowWater');
-// const normalize = require('./normalize');
+const normalize = require('./normalize');
 function createMap(N, wl) {
 	let cm = 'fu';
 
@@ -129,12 +130,14 @@ function createMap(N, wl) {
 	addButton('wv', () => cm = 'wv');
 	addButton('ah', () => cm = 'ah');
 	addButton('at', () => cm = 'at');
+	addButton('h+w', () => cm = 'h+w');
 
-	const h = diamondSquare(N, [
-		[32, (p, c) => p + c * frand()],
-		[16, (p, c) => p + c * frand() * 0.1],
-		[8, (p, c) => p + c * frand() * 0.01],
-	]);
+	const h = normalize(diamondSquare(N, [
+		[64, (p, c) => p + c * frand() * 100],
+		[32, (p, c) => p + c * frand() * 0.5],
+		// [16, (p, c) => p + c * frand() * 0.25],
+		// [8, (p, c) => p + c * frand() * 0.125],
+	]));
 
 	const t = temperatureMap(N, h, wl); // also pressure?
 
@@ -148,15 +151,13 @@ function createMap(N, wl) {
 	const m = {
 		h,
 		w,
-		wv: getSlope(N, h.map(v => v > wl ? (wl - v)*300 : 0)),
+		wv: getSlope(N, h.map((v, i) => - v - w[i]), 10),
 		ah: zeros,
 		t: t,
 		p: avgTemp,
 		at: avgTemp,
 		ct: avgTemp,
-		wi: getSlope(N, t.map((val, idx) => {
-			return val - h[idx] * 10;
-		}))
+		wi: getSlope(N, t.map((val, idx) => val - h[idx] * 10), 100)
 	};
 
 	canvas.onclick = e => {
@@ -174,10 +175,10 @@ function createMap(N, wl) {
 		m.t = m.t.map((val, idx) => val + temp[idx]);
 		m.at = m.at.map((val, idx) => val + temp[idx]);
 		// evaporate(m, dt);
-		// m.w = flowWater(N, m, dt);
-		flowWater(N, m, dt, wl);
 		// condensate(m, dt, 1);
-		// blowWind(N, m, dt, 1);
+		// m.wv = getSlope(N, m.h.map((v, idx) => -v - m.w[idx]), 10);
+		flowWater(N, m, dt);
+		blowWind(N, m, dt, 1);
 
 		switch (cm) {
 		case 'wi':
@@ -193,6 +194,9 @@ function createMap(N, wl) {
 		// case 'st':
 			renderTemperature(N, m[cm]);
 			break;
+		case 'h+w':
+			render(N, m.w.map((v, idx) => v + m.h[idx]));
+			break;
 		default:
 			render(N, m[cm]);
 		}
@@ -206,4 +210,4 @@ function createMap(N, wl) {
 	step(0);
 }
 
-const map = createMap(mapSize, 0.1);
+const map = createMap(mapSize, 0.3);

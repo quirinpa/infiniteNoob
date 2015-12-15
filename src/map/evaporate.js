@@ -5,7 +5,7 @@ module.exports = (m, dt) => {
 	// assume surface area is equal in all squares
 	// (rivers should have less)
 	const e = 0.1 * dt;
-	const evaporationT = 0.1;
+	const evaporationT = 1;
 	const amount = m.w.map((able, idx) => {
 		const t = m.t[idx];
 		if (t >= evaporationT) {

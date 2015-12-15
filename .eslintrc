@@ -17,6 +17,7 @@
 		"no-shadow": 1,
 		"new-cap": 1,
 		"no-fallthrough": 1,
-		"no-undef": 2
+		"no-undef": 2,
+		"no-unused-vars": 2,
 	}
 }

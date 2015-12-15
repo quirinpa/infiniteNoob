@@ -1,6 +1,6 @@
 "use strict";
-const daysPerTick = 1;
-let sunA = 0;
+const daysPerTick = require('./constants').daysPerTick;
+let sunA = Math.PI / 2;
 module.exports = (N, dt) => {
 	const s = new Array(N * N);
 	sunA += daysPerTick * dt;
@@ -8,7 +8,7 @@ module.exports = (N, dt) => {
 	for (let x = 0; x < N; x++) {
 		const pixelA = x * aux;
 		const a = Math.abs(pixelA - sunA);
-		const il = Math.cos(a);
+		const il = Math.cos(a); // relative temperature
 		// if (il < 0) il = 0;
 		// can't do this, must always decrease
 		// temperature on the other side of planet

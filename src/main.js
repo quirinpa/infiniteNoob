@@ -10,4 +10,5 @@ io.question('What is your name, adventurer?', name => {
 	});
 });
 
-require('./map');
+require('./map/index2.js');
+// require('./map');

@@ -20,23 +20,5 @@ module.exports = (N, hm, wl) => {
 			doForY(x, yDN, t);
 		}
 	}
-
-	// test
-	// const testT = debugText => {
-	// 	const hasNaN = [];
-	// 	const c = N * N;
-	// 	for (let i = 0; i < c; i++) {
-	// 		if (isNaN(m[i])) hasNaN.push(i);
-	// 	}
-	// 	console.log('test T: ' + debugText, 'hasNaN:', hasNaN, m);
-	// }
-	// testT('init');
-	// t is no longer NaN on the first line
-
 	return normalize(m);
 }
-
-// Assuming, there is currently no wind (not a solid assumption),
-// temperature is either directly or inversely proportional
-// (depending if we are talking surface or high-altitude) to pressure.
-// This is due to the equation PV = nRT. n, R and V are roughly proportional.

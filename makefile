@@ -1,3 +1,4 @@
-run:
-	webpack -d ./src/main.js ./static/main.js --watch &
-	node server.js
+build:
+	webpack --display-error-details --config webpack/index.js
+dev:
+	node index.js
